@@ -9,7 +9,8 @@ const Thing = require("../Model/thing");
 exports.createThing = (req, resp, next)=> {
     /**
      * Avec multer, le corps de la requête change.
-     * C'est du string, il faut donc le parser.
+     * Nous devons envoyer les donnés de la requête au forma form-data
+     * Ici, c'est un objet au format string, il faut donc le parser.
      */
     const thingObject = JSON.parse(req.body.thing);
      /**
@@ -38,6 +39,8 @@ exports.createThing = (req, resp, next)=> {
          * userId: req.body.userId
         */
        // on doit gérer la création de l'url
+       //             v                   v                  v          v
+       //        protocol http         localhost       destination   nom retourné pas multer     
         imageUrl: `${req.protocol}://${req.get("host")}/images/${req.file.filename}`
      });
      // On enregistre le nouvel objet en base
@@ -48,23 +51,42 @@ exports.createThing = (req, resp, next)=> {
       */
      .then(() => {resp.status(201).json({ message : "Objet en registré avec succès!"})})
      .catch(error => resp.status(400).json({error}));
-
-
-
-
 };
 
 // ici on modifie l'objet thing
 exports.modifyThing = (req, resp, next) => {
-    // updateOne permet de modifier l'objet
-    // id envoyé en paramètre de requête // ici le thing du corps de la requête, on dit que l'id doit correspondre à celui de la requête
-    //                       v                     v
-    Thing.updateOne({_id: req.params.id },{...req.body, _id: req.params.id })
-    // promise
-    .then(() => resp.status(200).json({ message: "Objet modifié avec succès"}))
-    .catch(error => resp.status(400).json({error}));
-};
+    /**
+     * on vérifie s'il y a un champ file dans la requête
+     * si c'est le cas, onrécupère l'objet et on parse la chaine de caractère
+     * sinon on récupère directement l'objet dans le coprs de la requête.
+     */
+    const thingVerify = req.file ? {
+        ...JSON.parse(req.body.thing),
+        // on recréé l'url de l'image
+        imageUrl: `${req.protocol}://${req.get("host")}/images/${req.file.filename}`
+        } : {...req.body};
+        // on supprime le userId
+        delete thingVerify._userId;
 
+        Thing.findOne({_id: req.params.id})
+        .then((thing) => {
+            // on vérifie si c'est le propriétaire de l'objet qui fait la requête de modif
+            if(thing.userId != req.auth.userId) {
+                // ici l'utilisateur cherche à modifier un obje qui ne lui appartient pas
+                resp.status(401).json({ message: "Non autorisé"})
+            } else {
+            // c'est le bon utilisateur
+            // updateOne permet de modifier l'objet
+            // id envoyé en paramètre de requête // ici le thing du corps de la requête, on dit que l'id doit correspondre à celui de la requête
+            //                         v                     v
+               Thing.updateOne({_id: req.params.id}, {...thingVerify, _id: req.params.id})
+               .then(()=> resp.status(200).json({message : "Objet modifié avec succès"}))
+               .catch((error) => resp.status(401).json({error})) 
+            }
+        })
+        .catch((error) => resp.status(400).json({error}));
+    };
+                      
 // ici on supprime un thing
 exports.deleteThing = (req, resp, next) => {
     Thing.deleteOne({ _id: req.params.id })

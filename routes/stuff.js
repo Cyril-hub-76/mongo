@@ -13,11 +13,11 @@ router.post("/", auth, multer, thingsController.createThing);
 // route read
 router.get("/:id", auth, thingsController.readThing);
 // route update
-router.put("/:id", auth, thingsController.modifyThing);
+router.put("/:id", auth, multer, thingsController.modifyThing);
 // route delete
 router.delete("/:id", auth, thingsController.deleteThing);
 // tous les objets ( things )
-router.get("/" + "", thingsController.getAllThings);
+router.get("/", thingsController.getAllThings);
 
 module.exports = router;
 

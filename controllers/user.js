@@ -55,7 +55,6 @@ exports.login = (req, resp, next)=> {
                     resp.status(401).json({ message: "identifiant / mot de passe incorrects"})
                 } else {
                     resp.status(200).json({
-                        message: "Vous êtes connecté!!!",
                         // on envoi un ojb avec les info nécéssaires à l'authentification des reqûtes
                         userId: user._id,
                         /**
